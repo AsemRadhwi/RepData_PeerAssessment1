@@ -1,20 +1,124 @@
 # Reproducible Research: Peer Assessment 1
+The following libraries are essential to execute the scripts in this file:
+```{r, echo=TRUE}
+library(ggplot2)
+```
 
 
 ## Loading and preprocessing the data
+First, we unzip the data, and read the data in a dataframe.
+```{r loadData, echo=TRUE}
+unzip('activity.zip')
+data <- read.csv('activity.csv')
+```
 
+Second, we need to convert the date column from factor to date.
+```{r convertDate, echo=TRUE}
+data$date <- as.Date(data$date,"%Y-%m-%d")
+```
 
+Finally, we inspect the data, and make sure everything looks OK.
+```{r insepctData, echo=TRUE}
+names(data)
+head(data)
+tail(data)
+str(data)
+summary(data)
+```
 
 ## What is mean total number of steps taken per day?
+Make a histogram of the total number of steps taken each day.
+```{r histoStepsPerDay, echo=TRUE}
+steps_per_day <- aggregate(steps ~ date, data, sum)
+colnames(steps_per_day) <- c("date", "steps")
+p <- qplot(data=steps_per_day, x=steps, geom='bar', alpha=I(.8), binwidth=1000,
+      main='Number of Steps taken per day')
+p + theme(axis.title=element_text(face="bold.italic", 
+   size="12", color="brown"), legend.position="top")
+```
+Calculate and report the mean and median total number of steps taken
+per day.
+```{r meanStepsPerDay, echo=TRUE, results='hide'}
+meanSteps <- round(mean(steps_per_day$steps))
+medianSteps <- median(steps_per_day$steps)
+```
 
-
+For the total number of steps taken per day, the mean is `r paste(meanSteps)` and the median is `r paste(medianSteps)`.
 
 ## What is the average daily activity pattern?
 
+Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis)
+and the average number of steps taken, averaged across all days (y-axis).
 
+```{r timeseriesPlot, echo=TRUE}
+steps_per_interval <- aggregate(steps ~ interval, data, sum, na.rm=T)
+colnames(steps_per_interval) <- c("interval", "steps")
+p <- qplot(data=steps_per_interval, x=interval, y=steps, geom='line', alpha=I(.8), 
+      main='Number of Steps taken per interval')
+p + theme(axis.title=element_text(face="bold.italic", 
+   size="12", color="brown"), legend.position="top")
+
+```
+
+Which 5-minute interval, on average across all the days in the dataset,
+contains the maximum number of steps?
+```{r maxStepsperInterval, echo=TRUE}
+max_steps <- max(steps_per_interval$steps)
+max_interval <- which.max(steps_per_interval$steps)
+```
+
+The interval that has the maximum steps is interval: `r steps_per_interval$interval[max_interval]` with `r max_steps` steps.
 
 ## Imputing missing values
+Calculate and report the total number of missing values in the dataset
+(i.e. the total number of rows with NAs)
+```{r numberOfMissingValues, echo=TRUE}
+sum(is.na(data$steps))
+```
 
+Make a new dataframe from data, and fill in zeroes for missing values:
+```{r fillMissingSteps, echo=TRUE}
+imputed <- data.frame(data)
+imputed$steps[is.na(data$steps)] <- 0
+```
+
+Make a histogram of the total number of steps taken each day from the imputed data frame.
+```{r histoStepsPerDayImputed, echo=TRUE}
+steps_per_day_imputed <- aggregate(steps ~ date, imputed, sum)
+colnames(steps_per_day_imputed) <- c("date", "steps")
+p <- qplot(data=steps_per_day_imputed, x=steps, geom='bar', alpha=I(.8), binwidth=1000,
+      main='Number of Steps taken per day')
+p + theme(axis.title=element_text(face="bold.italic", 
+   size="12", color="brown"), legend.position="top")
+```
+Calculate and report the mean and median total number of steps taken
+per day.
+```{r meanStepsPerDayImputed, echo=TRUE}
+meanStepsImputed <- round(mean(steps_per_day_imputed$steps))
+medianStepsImputed <- median(steps_per_day_imputed$steps)
+```
+
+For the total number of steps taken per day from the imputed dataframe, the mean is `r paste(meanStepsImputed)` and the median is `r paste(medianStepsImputed)`. The imputation strategy used shifts the distribution towards lower bounds.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable in the dataset with two levels – “weekday”
+and “weekend” indicating whether a given date is a weekday or weekend
+day. Make a panel plot containing a time series plot (i.e. type = "l") of the
+5-minute interval (x-axis) and the average number of steps taken, averaged
+across all weekday days or weekend days (y-axis). The plot should look
+something like the following, which was creating using simulated data:
+
+```{r plotWeekend, echo=TRUE}
+imputed$day_type <- as.factor(ifelse(weekdays(imputed$date) %in% c("Saturday", "Sunday"),
+                           'weekend', 'weekday'))
+ plot_data <- aggregate(steps ~ day_type + interval, imputed, mean)
+
+p <- qplot(data=plot_data, x=interval, y=steps, facets=day_type~., geom='line', alpha=I(.8), 
+      main='Number of Steps taken per interval')
+p + theme(axis.title=element_text(face="bold.italic", 
+   size="12", color="brown"), legend.position="top")
+
+```
+The data spikes in the mornings of the weekdays, obviously indicating that the subject is going to work. The weekend data is more adhoc.
